@@ -1,0 +1,8 @@
+[
+	{ "label": "꽝", "value": 0, "rate": 20 },
+	{ "label": "×2", "value": 2, "rate": 10 },
+	{ "label": "×3", "value": 3, "rate": 7 },
+	{ "label": "×4", "value": 4, "rate": 4 },
+	{ "label": "×5", "value": 5, "rate": 2 },
+	{ "label": "×10", "value": 10, "rate": 1 }
+]
