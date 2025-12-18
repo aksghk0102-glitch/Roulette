@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using UnityEngine.UI;
+using DG.Tweening;
 
 public class GameManager : MonoBehaviour
 {
@@ -13,25 +14,39 @@ public class GameManager : MonoBehaviour
     float rateSum;          // Item 내 rate의 총합
 
     [Header("UI")]
-    public RectTransform roulletteParent;       // 룰렛 조각의 부모 오브젝트
-    public GameObject partPrefab;           // 룰렛 조각 프리펩
-                                            //    * Image > fill 옵션 활성화 
-    public Text resultText;                 // 당첨 영역 라벨 표시
-    public Text informationText;            // 메세지 영역 라벨 표시
+    [SerializeField] RectTransform roulletteParent;       // 룰렛 조각의 부모 오브젝트
+    [SerializeField] GameObject partPrefab;           // 룰렛 조각 프리펩
+                                                      //    * Image > fill 옵션 사용
+    [SerializeField] Text resultText;                 // 당첨 영역 라벨 표시
+    [SerializeField] Text informationText;            // 메세지 영역 라벨 표시
 
-    public Button pushStart_Btn;
+    [SerializeField] Button pushStart_Btn;
+    [SerializeField] Button showJson_Btn;
 
     [Header("Result Table")]
-    public Text curRoundText;
-    public Text curLabelText;
-    public Text curValueText;
-    public Text curRateText;
+    [SerializeField] Text curRoundText;
+    [SerializeField] Text curLabelText;
+    [SerializeField] Text curValueText;
+    [SerializeField] Text curRateText;
     int curRound = 0;
 
     [Header("Direction")]
-    public float spinTime = 5f;             // 회전 시간
+    [SerializeField] float spinTime = 1f;             // 한 바퀴를 도는 데 걸리는 회전 시간
     bool isSpinning = false;                // 회전 중 인지 체크 > 상태 머신 역할 플래그
-    public int spinCount = 5;               // 연출 시 룰렛을 회전 시킬 횟수
+    int minSpinCount = 5;                   // 연출 시 룰렛을 회전 시킬 최저 횟수
+    int maxSpinCount = 10;                  // 연출 시 룰렛을 회전 시킬 최대 횟수
+    // 룰렛의 다양한 회전 연출 (Dotween 라이브러리 활용)
+    enum SpinPattern
+    {
+        Smooth, Back, Elastic, Bounce,
+        Count
+    }
+    float vAngle;       // 룰렛의 한 영역이 차지하는 각도
+
+
+    // 추가 연출용 변수
+    int lastItemIdx = -1;                   // 바늘이 마지막으로 가리킨 인덱스값
+    [SerializeField] RectTransform pointer; // 바늘
 
     private void Awake()
     {
@@ -45,13 +60,19 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
+        // 버튼 리스너 연결
         if (pushStart_Btn != null)
             pushStart_Btn.onClick.AddListener(ClickStartButton);
+        if (showJson_Btn != null)
+            showJson_Btn.onClick.AddListener(ShowJson);
 
-        curRoundText.text = 0.ToString();
-        curLabelText.text = 0.ToString();
-        curValueText.text = 0.ToString();
-        curRateText.text = 0.ToString();
+        // UI 초기화
+        curRoundText.text = "0";
+        curLabelText.text = "0";
+        curValueText.text = "0";
+        curRateText.text = "0";
+        float z = roulletteParent.localRotation.eulerAngles.z;
+        UpdateResultText(z);
     }
 
     void LoadData()
@@ -91,7 +112,7 @@ public class GameManager : MonoBehaviour
             rateSum += item.rate;
 
         int itemCount = itemDatas.Length;           // 동적으로 생성할 룰렛 항목의 수
-        float visualAngle = 360f / itemCount;       // 한 칸이 차지하는 공간의 각도 계산
+        vAngle = 360f / itemCount;       // 한 칸이 차지하는 공간의 각도 계산
         float imgFill = 1f / itemCount;
 
         for(int i = 0; i < itemCount; i++)
@@ -100,8 +121,8 @@ public class GameManager : MonoBehaviour
             itemDatas[i].probability = (float)itemDatas[i].rate / rateSum;
 
             // 각도 값 저장
-            itemDatas[i].startAngle = visualAngle * i;
-            itemDatas[i].endAngle = visualAngle * (i + 1);
+            itemDatas[i].startAngle = vAngle * i;
+            itemDatas[i].endAngle = vAngle * (i + 1);
 
             // 룰렛 조각 생성
             GameObject part = Instantiate(partPrefab, roulletteParent);
@@ -115,7 +136,7 @@ public class GameManager : MonoBehaviour
             }
 
             // 회전
-            part.transform.localRotation = Quaternion.Euler(0, 0, -visualAngle * i);
+            part.transform.localRotation = Quaternion.Euler(0, 0, -vAngle * i);
 
             // 텍스트 설정
             Text partLabel = part.GetComponentInChildren<Text>();
@@ -123,7 +144,7 @@ public class GameManager : MonoBehaviour
             {
                 // 텍스트 수정 및 부채꼴 중앙으로 위치하도록 회전
                 partLabel.text = itemDatas[i].label + "\n\n\n\n\n\n\n";     // 임시 
-                partLabel.transform.localRotation = Quaternion.Euler(0,0, -visualAngle / 2f);
+                partLabel.transform.localRotation = Quaternion.Euler(0,0, -vAngle / 2f);
             }
         }
     }
@@ -132,6 +153,7 @@ public class GameManager : MonoBehaviour
     {
         if (isSpinning) return;
 
+        roulletteParent.DOKill();       // Dotween 중복 호출 방지
         StartCoroutine(StartSpin());
     }
 
@@ -144,31 +166,138 @@ public class GameManager : MonoBehaviour
         // 결과 생성
         Item resultItem = GetResult();
 
+        // 연출부
+        
+        // 룰렛의 회전 수 설정
+        int ranSpinCount = Random.Range(minSpinCount, maxSpinCount + 1);
+        // 회전 연출 패턴 설정
+        SpinPattern pattern = (SpinPattern)Random.Range(0, (int)SpinPattern.Count);
+        // 생성된 결과 범위 내에 도착 지점 offset 설정
+        // 기본 도착 지점 startAngle에 0 ~ 영역 내 최대 각도를 더함
+        float offSet = Random.Range(0f, vAngle);
+        // 총 연출 시간 계산
+        float directTime = spinTime * ranSpinCount;
+
         // 목표 각도 계산
-        float itemCenterAngle = (resultItem.startAngle + resultItem.endAngle) / 2;
-        float targetRot = 360f * spinCount * itemCenterAngle;
+        float curZ = roulletteParent.localRotation.eulerAngles.z;
+        float targetZ = (curZ - (curZ % 360f))      // 현재 각도 정렬
+            + (360f * ranSpinCount)                 // 연출용 회전 수 적용
+            + resultItem.startAngle + offSet;
 
-        float elapsed = 0f;
-        float startRot = roulletteParent.localRotation.eulerAngles.z;
+        // 시퀀스 분리 지점 설정 : 목적지의 20%를 남기고 연출 시작
+        float stopZ = targetZ - vAngle * 0.2f;
 
-        // 회전
-        while (elapsed < spinTime)
+        // 시퀀스 1 - 메인 회전
+        Sequence seq = DOTween.Sequence();
+
+        seq.Append(roulletteParent
+            .DORotate(new Vector3(0, 0, stopZ),     // 목표 지점
+            directTime, RotateMode.FastBeyond360)   // FastBeyond360 : 360도를 초과해 여러 바퀴 회전 시 사용
+            .SetEase(Ease.Linear));     // Linear : 감속 없이 선형 증가
+
+
+        // 시퀀스 오버랩 지점 설정
+        //float overlapTime = directTime - 0.1f;
+
+        // 시퀀스 2 - 정지 연출
+        //Debug.Log(pattern);
+        switch (pattern)
         {
-            elapsed += Time.deltaTime;
-            float t = elapsed / spinTime;
+            // 정직하게 감속
+            case SpinPattern.Smooth:
+                seq.Append (roulletteParent
+                    .DORotate(new Vector3(0, 0, targetZ),
+                    0.6f, RotateMode.Fast)      // 0.6f : 연출 시간
+                                                // Fast : -180~180 범위 내의 가까운 방향으로 회전
+                    .SetEase(Ease.OutCubic)     // OutCubic : 반동 없이 일정하게 감속
+                    );
+                break;
+            
+            // 목표 지점을 조금 초과한 뒤 돌아오는 연출
+            case SpinPattern.Back:
+                float backOffset = vAngle * 0.4f;
 
-            t = t * (2f - t);
-            float curZ = Mathf.Lerp(0, targetRot, t);
-            roulletteParent.localRotation = Quaternion.Euler(0, 0, curZ);
+                seq.Append(roulletteParent
+                    .DORotate(new Vector3(0, 0, targetZ + backOffset),
+                    0.25f, RotateMode.Fast)     // 0.25f : 연출 시간
+                    .SetEase(Ease.OutQuad)      // OutQuad : 목표 속도에 빠르게 도달 후 감속
+                    );
 
-            yield return null;
+                seq.Append(roulletteParent
+                    .DORotate(new Vector3(0, 0, targetZ),
+                    0.25f, RotateMode.Fast)     // 0.25f : 연출 시간
+                    .SetEase(Ease.InOutQuad)    // InOutQuad : 시작/종료 시 InOutCubic보다 완만하게 가/감속
+                    );
+
+                break;
+            
+            case SpinPattern.Elastic:
+                // 튕기는 듯한 연출
+                seq.Append(roulletteParent
+                    .DORotate(new Vector3(0, 0, targetZ),
+                    0.6f, RotateMode.Fast)       //  0.6f : 연출 시간       
+                    .SetEase(Ease.OutElastic, 1.5f, 0.3f)  // OutElastic : 1.5f의 진폭을 0.3f 간격으로 진동 효과 발생
+                    );
+                break;
+            
+            case SpinPattern.Bounce:
+                seq.Append(roulletteParent
+                     .DORotate(new Vector3(0, 0, targetZ),
+                     0.5f, RotateMode.Fast)     // 0.5f : 연출 시간
+                     .SetEase(Ease.OutBounce)   // OutBounce : 통통 튕기는 감속 반동 발생
+                     );
+                break;
+
         }
 
-        // 
+        // 회전 중 텍스트 실시간 변경
+        seq.OnUpdate(() =>
+            {
+                float z = roulletteParent.localRotation.eulerAngles.z;
+                UpdateResultText(z);
+            });
+
+        // 연출 끝날 때까지 대기
+        yield return seq.WaitForCompletion();
+
+        // 패턴이 완료되면 상태 플래그와 결과 처리
         isSpinning = false;
-        informationText.text = "결과 확인";
-        resultText.text = resultItem.label;
         ShowResult(resultItem);
+    }
+
+    // Dotween 연출 시 매 프레임 업데이트 + 대기 시간 처리
+    //IEnumerator PlayTween(Tween t, float spinZ)
+    //{
+    //    yield return t
+    //        .OnUpdate(() => UpdateResultText(spinZ))
+    //        .WaitForCompletion();
+    //}
+
+    void UpdateResultText(float spinZ)
+    {
+        if (itemDatas == null || itemDatas.Length == 0)
+            return;
+
+        float normalizedAngle = Mathf.Repeat(spinZ, 360f);  // 0~360도 범위로 정규화
+
+        int itemIdx = Mathf.FloorToInt(normalizedAngle / vAngle);
+
+        // 바늘 연출
+        if (itemIdx != lastItemIdx && pointer != null)
+        {
+            lastItemIdx = itemIdx;
+
+            pointer.DOKill();
+            pointer.localScale = Vector3.one;
+
+            pointer.DOScale(1.2f, 0.1f)     // 1.2f : 1.2배 스케일로 확대, 0.1초가 걸림
+                .SetLoops(2, LoopType.Yoyo) // 2 : 확대 + 축소를 각각 카운트
+                                            // LoopType.Yoyo : 반복 시 진행한 애니메이션을 역재생 = 2회 반복하면 원상복구
+                .SetEase(Ease.OutQuad);
+        }
+
+
+        resultText.text = itemDatas[itemIdx].label;
     }
 
     public Item GetResult()
@@ -191,7 +320,9 @@ public class GameManager : MonoBehaviour
         curRoundText.text = curRound.ToString();
         curLabelText.text = targetItem.label;
         curValueText.text = targetItem.value.ToString("N0");        
-        curRateText.text = targetItem.probability.ToString("F2");   // 저장해둔 실제 값 표시
+        curRateText.text = targetItem.probability.ToString("F3");   // 저장해둔 실제 값 표시
+
+        informationText.text = $"{targetItem.label}";
     }
 
     public void ShowJson()
