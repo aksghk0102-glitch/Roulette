@@ -185,7 +185,7 @@ public class GameManager : MonoBehaviour
             + resultItem.startAngle + offSet;
 
         // 시퀀스 분리 지점 설정 : 목적지의 20%를 남기고 연출 시작
-        float stopZ = targetZ - vAngle * 0.2f;
+        float stopZ = targetZ - vAngle * 0.4f;
 
         // 시퀀스 1 - 메인 회전
         Sequence seq = DOTween.Sequence();
@@ -193,7 +193,7 @@ public class GameManager : MonoBehaviour
         seq.Append(roulletteParent
             .DORotate(new Vector3(0, 0, stopZ),     // 목표 지점
             directTime, RotateMode.FastBeyond360)   // FastBeyond360 : 360도를 초과해 여러 바퀴 회전 시 사용
-            .SetEase(Ease.Linear));     // Linear : 감속 없이 선형 증가
+            .SetEase(Ease.OutQuad));     // 감속
 
 
         // 시퀀스 오버랩 지점 설정
@@ -207,7 +207,7 @@ public class GameManager : MonoBehaviour
             case SpinPattern.Smooth:
                 seq.Append (roulletteParent
                     .DORotate(new Vector3(0, 0, targetZ),
-                    0.6f, RotateMode.Fast)      // 0.6f : 연출 시간
+                    1.2f, RotateMode.Fast)      // 0.6f : 연출 시간
                                                 // Fast : -180~180 범위 내의 가까운 방향으로 회전
                     .SetEase(Ease.OutCubic)     // OutCubic : 반동 없이 일정하게 감속
                     );
@@ -215,18 +215,18 @@ public class GameManager : MonoBehaviour
             
             // 목표 지점을 조금 초과한 뒤 돌아오는 연출
             case SpinPattern.Back:
-                float backOffset = vAngle * 0.4f;
+                float backOffset = vAngle * Random.Range(0.7f, 1.1f);
 
                 seq.Append(roulletteParent
                     .DORotate(new Vector3(0, 0, targetZ + backOffset),
-                    0.25f, RotateMode.Fast)     // 0.25f : 연출 시간
+                    0.4f, RotateMode.Fast)     // 0.25f : 연출 시간
                     .SetEase(Ease.OutQuad)      // OutQuad : 목표 속도에 빠르게 도달 후 감속
                     );
 
                 seq.Append(roulletteParent
                     .DORotate(new Vector3(0, 0, targetZ),
-                    0.25f, RotateMode.Fast)     // 0.25f : 연출 시간
-                    .SetEase(Ease.InOutQuad)    // InOutQuad : 시작/종료 시 InOutCubic보다 완만하게 가/감속
+                    0.5f, RotateMode.Fast)     // 0.25f : 연출 시간
+                    .SetEase(Ease.InOutCubic)    // InOutQuad : 시작/종료 시 InOutCubic보다 완만하게 가/감속
                     );
 
                 break;
@@ -235,15 +235,15 @@ public class GameManager : MonoBehaviour
                 // 튕기는 듯한 연출
                 seq.Append(roulletteParent
                     .DORotate(new Vector3(0, 0, targetZ),
-                    0.6f, RotateMode.Fast)       //  0.6f : 연출 시간       
-                    .SetEase(Ease.OutElastic, 1.5f, 0.3f)  // OutElastic : 1.5f의 진폭을 0.3f 간격으로 진동 효과 발생
+                    1.4f, RotateMode.Fast)       //  0.6f : 연출 시간       
+                    .SetEase(Ease.OutElastic, 0.6f, 0.3f)  // OutElastic : 0.6f의 진폭을 0.3f 간격으로 진동 효과 발생
                     );
                 break;
             
             case SpinPattern.Bounce:
                 seq.Append(roulletteParent
                      .DORotate(new Vector3(0, 0, targetZ),
-                     0.5f, RotateMode.Fast)     // 0.5f : 연출 시간
+                     0.8f, RotateMode.Fast)     // 0.5f : 연출 시간
                      .SetEase(Ease.OutBounce)   // OutBounce : 통통 튕기는 감속 반동 발생
                      );
                 break;
@@ -328,7 +328,7 @@ public class GameManager : MonoBehaviour
     public void ShowJson()
     {
         string filePath = Path.Combine(Application.dataPath, "Table", "rate.json");
-
+        
         // 파일이 존재하는 지 검사 후 실행
         if (File.Exists(filePath))
             System.Diagnostics.Process.Start("notePad.exe", filePath);
