@@ -1,10 +1,14 @@
 [
 	{ "label": "×2", "value": 2, "rate": 10 },
-	{ "label": "×3", "value": 3, "rate": 7 },
-	{ "label": "×4", "value": 4, "rate": 5 },
-	{ "label": "꽝", "value": 0, "rate": 15 },
-	{ "label": "×5", "value": 5, "rate": 4 },
 	{ "label": "×6", "value": 6, "rate": 2 },
+	{ "label": "×4", "value": 4, "rate": 5 },
+	{ "label": "×2", "value": 2, "rate": 10 },
+	{ "label": "×3", "value": 3, "rate": 7 },
+	{ "label": "꽝", "value": 0, "rate": 15 },
+	{ "label": "×2", "value": 2, "rate": 10 },
 	{ "label": "×7", "value": 7, "rate": 1 },
+	{ "label": "×2", "value": 2, "rate": 10 },
+	{ "label": "×5", "value": 5, "rate": 4 },
+	{ "label": "×2", "value": 2, "rate": 10 },
 	{ "label": "꽝", "value": 0, "rate": 15 }
 ]

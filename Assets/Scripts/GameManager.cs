@@ -5,6 +5,12 @@ using System.IO;
 using UnityEngine.UI;
 using DG.Tweening;
 
+// ================================================================================
+// 25.12.23(화) 추가 작업 사항 메모
+// - 룰렛 생성 시 핀이 함께 생성되도록 수정 
+// - 룰렛이 시계 방향으로 회전하도록 수정 (targetZ를 잡는 부분을 음수화)
+// ================================================================================ 
+
 public class GameManager : MonoBehaviour
 {
     public static GameManager inst;     // 싱글톤
@@ -38,15 +44,25 @@ public class GameManager : MonoBehaviour
     // 룰렛의 다양한 회전 연출 (Dotween 라이브러리 활용)
     enum SpinPattern
     {
-        Smooth, Back, Elastic, Bounce,
+        //Smooth, Back, Elastic, Bounce,
+        Pass, NotPass, Smooth,      // 각각 과제 경우의 수 
         Count
     }
     float vAngle;       // 룰렛의 한 영역이 차지하는 각도
 
+    // 25.12.23. 추가
+    [Header("Pin Settings")]
+    [SerializeField] GameObject pinPrefab;      // 핀을 룰렛의 시작 지점을 참조하여 생성
+    [SerializeField] float pinOffset = 100f;           // 핀이 룰렛 중심으로부터 생성될 거리 계산
+    List<GameObject> pins = new List<GameObject>(); // 핀 추적을 용이하게 하기 위해 리스트 생성
 
     // 추가 연출용 변수
     int lastItemIdx = -1;                   // 바늘이 마지막으로 가리킨 인덱스값
     [SerializeField] RectTransform pointer; // 바늘
+    [SerializeField] float bounceAngle = 20f;   // 바늘이 핀에 튕기는 각도
+    [SerializeField] float returnSpeed = 0.1f;  // 바늘이 제자리로 돌아오는 속도
+
+    float direction = -1;       // -1 = 시계 방향 : 코드 의도를 알기 어려워져서 추가
 
     private void Awake()
     {
@@ -72,7 +88,7 @@ public class GameManager : MonoBehaviour
         curValueText.text = "0";
         curRateText.text = "0";
         float z = roulletteParent.localRotation.eulerAngles.z;
-        UpdateResultText(z);
+        UpdatePointer(z);
     }
 
     void LoadData()
@@ -147,6 +163,38 @@ public class GameManager : MonoBehaviour
                 partLabel.transform.localRotation = Quaternion.Euler(0,0, -vAngle / 2f);
             }
         }
+
+        // 25.12.23. 추가
+        for (int i = 0; i < itemCount; i++)     // 생성 순서를 후순위로 미루기 위해 별도의 for문 사용
+        {
+            if (pinPrefab != null)
+            {
+                GameObject pin = Instantiate(pinPrefab, roulletteParent);
+
+                // 핀의 각도 결정 -> 룰렛의 경계면에 위치하도록 Item.startAngle 참조
+                float angle = -vAngle * i;
+
+                // 좌표 계산
+                float rad = angle * Mathf.Deg2Rad;
+                float x = Mathf.Sin(rad) * pinOffset;
+                float y = Mathf.Cos(rad) * pinOffset;
+
+                pin.transform.localPosition = new Vector3(x, y, 0);
+                pin.transform.localRotation = Quaternion.Euler(0, 0, angle);
+
+                pins.Add(pin);
+            }
+        }
+
+        // 초기 생성 시 핀의 위치와 바늘이 겹치는 경우 룰렛을 살짝 회전시켜 어색한 연출 회피
+        if (Mathf.Approximately(180f % vAngle, 0f)) // 부동소수 오차 방지
+                                                    // vAngle이 나누어 떨어지는 경우 핀 위치가 겹침 
+        {
+            roulletteParent.localRotation = Quaternion.Euler(0, 0, vAngle / 2);
+        }
+
+        // 25.12.23. 추가
+
     }
 
     public void ClickStartButton()
@@ -166,86 +214,112 @@ public class GameManager : MonoBehaviour
         // 결과 생성
         Item resultItem = GetResult();
 
-        // 연출부
+        // 회전 연출 패턴 랜덤 설정
+        SpinPattern pattern = (SpinPattern)Random.Range(0, (int)SpinPattern.Count);
         
         // 룰렛의 회전 수 설정
         int ranSpinCount = Random.Range(minSpinCount, maxSpinCount + 1);
-        // 회전 연출 패턴 설정
-        SpinPattern pattern = (SpinPattern)Random.Range(0, (int)SpinPattern.Count);
+        
         // 생성된 결과 범위 내에 도착 지점 offset 설정
         // 기본 도착 지점 startAngle에 0 ~ 영역 내 최대 각도를 더함
-        float offSet = Random.Range(0f, vAngle);
+        float offSet = Random.Range(5f, vAngle - 5f);       // 핀과 겹치지 않는 위치로 조정
+
+        // 목표 각도 계산     // 25.12.23. 시계방향으로 회전하게 수정
+        float curZ = roulletteParent.localRotation.eulerAngles.z;
+        float targetZ = (((curZ - (curZ % 360f))               // 수정 현재 각도 정렬
+            + (360f * ranSpinCount)                        // 연출용 회전 수 적용
+            + resultItem.startAngle + offSet)) * direction;// 시계 방향으로 회전하도록 *-1
+        
+        //// 시퀀스 분리 지점 설정 : 목적지의 20%를 남기고 연출 시작
+        //float stopZ = targetZ - vAngle * 0.4f;
         // 총 연출 시간 계산
         float directTime = spinTime * ranSpinCount;
+        float mainDurTime = directTime * 0.8f;
+        float lastDurTime = directTime * 0.2f;
 
-        // 목표 각도 계산
-        float curZ = roulletteParent.localRotation.eulerAngles.z;
-        float targetZ = (curZ - (curZ % 360f))      // 현재 각도 정렬
-            + (360f * ranSpinCount)                 // 연출용 회전 수 적용
-            + resultItem.startAngle + offSet;
+        // 시퀀스 1 - 메인 회전 : 연출 지점 전까지 감속하며 회전
+        float mainStopZ = targetZ - 10f * direction;// 시퀀스 1 지점. 도착 10도 전 * 방향값
 
-        // 시퀀스 분리 지점 설정 : 목적지의 20%를 남기고 연출 시작
-        float stopZ = targetZ - vAngle * 0.4f;
-
-        // 시퀀스 1 - 메인 회전
         Sequence seq = DOTween.Sequence();
 
         seq.Append(roulletteParent
-            .DORotate(new Vector3(0, 0, stopZ),     // 목표 지점
+            .DORotate(new Vector3(0, 0, mainStopZ),     // 목표 지점
             directTime, RotateMode.FastBeyond360)   // FastBeyond360 : 360도를 초과해 여러 바퀴 회전 시 사용
-            .SetEase(Ease.OutQuad));     // 감속
+            .SetEase(Ease.OutCubic));     // 감속
 
 
         // 시퀀스 오버랩 지점 설정
         //float overlapTime = directTime - 0.1f;
 
         // 시퀀스 2 - 정지 연출
-        //Debug.Log(pattern);
+        Debug.Log(pattern);
         switch (pattern)
         {
-            // 정직하게 감속
+            #region 수정 전 사항
+            //// 정직하게 감속
+            //case SpinPattern.Smooth:
+            //    seq.Append (roulletteParent
+            //        .DORotate(new Vector3(0, 0, targetZ),
+            //        1.2f, RotateMode.Fast)      // 0.6f : 연출 시간
+            //                                    // Fast : -180~180 범위 내의 가까운 방향으로 회전
+            //        .SetEase(Ease.OutCubic)     // OutCubic : 반동 없이 일정하게 감속
+            //        );
+            //    break;
+            //
+            //// 목표 지점을 조금 초과한 뒤 돌아오는 연출
+            //case SpinPattern.Back:
+            //    float backOffset = vAngle * Random.Range(0.7f, 1.1f);
+            //
+            //    seq.Append(roulletteParent
+            //        .DORotate(new Vector3(0, 0, targetZ + backOffset),
+            //        0.4f, RotateMode.Fast)     // 0.25f : 연출 시간
+            //        .SetEase(Ease.OutQuad)      // OutQuad : 목표 속도에 빠르게 도달 후 감속
+            //        );
+            //
+            //    seq.Append(roulletteParent
+            //        .DORotate(new Vector3(0, 0, targetZ),
+            //        0.5f, RotateMode.Fast)     // 0.25f : 연출 시간
+            //        .SetEase(Ease.InOutCubic)    // InOutQuad : 시작/종료 시 InOutCubic보다 완만하게 가/감속
+            //        );
+            //
+            //    break;
+            //
+            //case SpinPattern.Elastic:
+            //    // 튕기는 듯한 연출
+            //    seq.Append(roulletteParent
+            //        .DORotate(new Vector3(0, 0, targetZ),
+            //        1.4f, RotateMode.Fast)       //  0.6f : 연출 시간       
+            //        .SetEase(Ease.OutElastic, 0.6f, 0.3f)  // OutElastic : 0.6f의 진폭을 0.3f 간격으로 진동 효과 발생
+            //        );
+            //    break;
+            //
+            //case SpinPattern.Bounce:
+            //    seq.Append(roulletteParent
+            //         .DORotate(new Vector3(0, 0, targetZ),
+            //         0.8f, RotateMode.Fast)     // 0.5f : 연출 시간
+            //         .SetEase(Ease.OutBounce)   // OutBounce : 통통 튕기는 감속 반동 발생
+            //         );
+            //    break;
+            #endregion
+            // 넘길듯 말듯 넘어가는 연출
+            case SpinPattern.Pass:
+                seq.Append(roulletteParent
+                    .DORotate(new Vector3(0, 0, targetZ), directTime * 0.2f)
+                    .SetEase(Ease.OutQuart));
+                break;
+
+            // 넘길듯 말듯 안 넘어가는 연출
+            case SpinPattern.NotPass:
+                seq.Append(roulletteParent
+                    .DORotate(new Vector3(0, 0, targetZ), directTime * 0.2f)
+                    .SetEase(Ease.OutQuart));
+                break;
+
+            // 힘없이 확정
             case SpinPattern.Smooth:
-                seq.Append (roulletteParent
-                    .DORotate(new Vector3(0, 0, targetZ),
-                    1.2f, RotateMode.Fast)      // 0.6f : 연출 시간
-                                                // Fast : -180~180 범위 내의 가까운 방향으로 회전
-                    .SetEase(Ease.OutCubic)     // OutCubic : 반동 없이 일정하게 감속
-                    );
-                break;
-            
-            // 목표 지점을 조금 초과한 뒤 돌아오는 연출
-            case SpinPattern.Back:
-                float backOffset = vAngle * Random.Range(0.7f, 1.1f);
-
                 seq.Append(roulletteParent
-                    .DORotate(new Vector3(0, 0, targetZ + backOffset),
-                    0.4f, RotateMode.Fast)     // 0.25f : 연출 시간
-                    .SetEase(Ease.OutQuad)      // OutQuad : 목표 속도에 빠르게 도달 후 감속
-                    );
-
-                seq.Append(roulletteParent
-                    .DORotate(new Vector3(0, 0, targetZ),
-                    0.5f, RotateMode.Fast)     // 0.25f : 연출 시간
-                    .SetEase(Ease.InOutCubic)    // InOutQuad : 시작/종료 시 InOutCubic보다 완만하게 가/감속
-                    );
-
-                break;
-            
-            case SpinPattern.Elastic:
-                // 튕기는 듯한 연출
-                seq.Append(roulletteParent
-                    .DORotate(new Vector3(0, 0, targetZ),
-                    1.4f, RotateMode.Fast)       //  0.6f : 연출 시간       
-                    .SetEase(Ease.OutElastic, 0.6f, 0.3f)  // OutElastic : 0.6f의 진폭을 0.3f 간격으로 진동 효과 발생
-                    );
-                break;
-            
-            case SpinPattern.Bounce:
-                seq.Append(roulletteParent
-                     .DORotate(new Vector3(0, 0, targetZ),
-                     0.8f, RotateMode.Fast)     // 0.5f : 연출 시간
-                     .SetEase(Ease.OutBounce)   // OutBounce : 통통 튕기는 감속 반동 발생
-                     );
+                    .DORotate(new Vector3(0, 0, targetZ), directTime * 0.2f)
+                    .SetEase(Ease.OutQuart));
                 break;
 
         }
@@ -254,11 +328,14 @@ public class GameManager : MonoBehaviour
         seq.OnUpdate(() =>
             {
                 float z = roulletteParent.localRotation.eulerAngles.z;
-                UpdateResultText(z);
+                UpdatePointer(z);
             });
 
         // 연출 끝날 때까지 대기
         yield return seq.WaitForCompletion();
+
+        // 바늘 위치 최종 보정
+        pointer.DORotate(Vector3.zero, 1f).SetEase(Ease.OutBack);
 
         // 패턴이 완료되면 상태 플래그와 결과 처리
         isSpinning = false;
@@ -273,30 +350,36 @@ public class GameManager : MonoBehaviour
     //        .WaitForCompletion();
     //}
 
-    void UpdateResultText(float spinZ)
+    void UpdatePointer(float spinZ)
     {
         if (itemDatas == null || itemDatas.Length == 0)
             return;
 
         float normalizedAngle = Mathf.Repeat(spinZ, 360f);  // 0~360도 범위로 정규화
 
-        int itemIdx = Mathf.FloorToInt(normalizedAngle / vAngle);
+        // 바늘 연출 => 25.12.23. 수정 : 바늘의 각도를 핀에 구속시켜 물리적으로 움직이는 것처럼 연출
 
-        // 바늘 연출
-        if (itemIdx != lastItemIdx && pointer != null)
+        // 가장 가까운 핀과 거리 계산
+        float dist = Mathf.Repeat(normalizedAngle + 180f, vAngle);      // + 180f: 바늘이 있는 지점
+        float validRange = 5f;     // 핀이 바늘을 밀어내기 시작하는 거리 설정
+
+        if(dist < validRange)
         {
-            lastItemIdx = itemIdx;
-
             pointer.DOKill();
-            pointer.localScale = Vector3.one;
+            float pushPower = 1f - (dist / validRange);
+            float targetAngle = bounceAngle * pushPower;
 
-            pointer.DOScale(1.2f, 0.1f)     // 1.2f : 1.2배 스케일로 확대, 0.1초가 걸림
-                .SetLoops(2, LoopType.Yoyo) // 2 : 확대 + 축소를 각각 카운트
-                                            // LoopType.Yoyo : 반복 시 진행한 애니메이션을 역재생 = 2회 반복하면 원상복구
-                .SetEase(Ease.OutQuad);
+            pointer.localRotation = Quaternion.Euler(0,0,targetAngle);
+        }
+        else
+        {
+            if (pointer.localRotation.eulerAngles.z > 0.1f && !DOTween.IsTweening(pointer))
+                pointer.DORotate(Vector3.zero, returnSpeed)
+                    .SetEase(Ease.OutElastic);
         }
 
-
+        float result = Mathf.Repeat(normalizedAngle + 180f, 360f);
+        int itemIdx = Mathf.FloorToInt(result / vAngle);
         resultText.text = itemDatas[itemIdx].label;
     }
 
