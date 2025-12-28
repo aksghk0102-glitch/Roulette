@@ -912,7 +912,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 552724902}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
@@ -1126,8 +1126,6 @@ MonoBehaviour:
   pinPrefab: {fileID: 7446914405731403124, guid: 45bd2eb871dce674da4ff7344e19d1b1, type: 3}
   pinOffset: 330
   pointer: {fileID: 1506875928}
-  bounceAngle: 20
-  returnSpeed: 0.1
 --- !u!4 &894919457
 Transform:
   m_ObjectHideFlags: 0
