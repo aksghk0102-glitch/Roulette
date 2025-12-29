@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
@@ -6,28 +6,25 @@ using UnityEngine.UI;
 using DG.Tweening;
 
 // ================================================================================
-// 25.12.23(È­) Ãß°¡ ÀÛ¾÷ »çÇ× ¸Ş¸ğ
-// - ·ê·¿ »ı¼º ½Ã ÇÉÀÌ ÇÔ²² »ı¼ºµÇµµ·Ï ¼öÁ¤ 
-// - ·ê·¿ÀÌ ½Ã°è ¹æÇâÀ¸·Î È¸ÀüÇÏµµ·Ï ¼öÁ¤ (targetZ¸¦ Àâ´Â ºÎºĞÀ» À½¼öÈ­)
+// 25.12.23(í™”) ì¶”ê°€ ì‘ì—… ì‚¬í•­ ë©”ëª¨
+// - ë£°ë › ìƒì„± ì‹œ í•€ì´ í•¨ê»˜ ìƒì„±ë˜ë„ë¡ ìˆ˜ì • 
+// - ë£°ë ›ì´ ì‹œê³„ ë°©í–¥ìœ¼ë¡œ íšŒì „í•˜ë„ë¡ ìˆ˜ì • (targetZë¥¼ ì¡ëŠ” ë¶€ë¶„ì„ ìŒìˆ˜í™”)
 // ================================================================================ 
-
-
-
 
 public class GameManager : MonoBehaviour
 {
-    public static GameManager inst;     // ½Ì±ÛÅæ
+    public static GameManager inst;     // ì‹±ê¸€í†¤
 
     [Header("Roullette Data")]
     public Item[] itemDatas;
-    float rateSum;          // Item ³» rateÀÇ ÃÑÇÕ
+    float rateSum;          // Item ë‚´ rateì˜ ì´í•©
 
     [Header("UI")]
-    [SerializeField] RectTransform roulletteParent;       // ·ê·¿ Á¶°¢ÀÇ ºÎ¸ğ ¿ÀºêÁ§Æ®
-    [SerializeField] GameObject partPrefab;           // ·ê·¿ Á¶°¢ ÇÁ¸®Æé
-                                                      //    * Image > fill ¿É¼Ç »ç¿ë
-    [SerializeField] Text resultText;                 // ´çÃ· ¿µ¿ª ¶óº§ Ç¥½Ã
-    [SerializeField] Text informationText;            // ¸Ş¼¼Áö ¿µ¿ª ¶óº§ Ç¥½Ã
+    [SerializeField] RectTransform roulletteParent;       // ë£°ë › ì¡°ê°ì˜ ë¶€ëª¨ ì˜¤ë¸Œì íŠ¸
+    [SerializeField] GameObject partPrefab;           // ë£°ë › ì¡°ê° í”„ë¦¬í©
+                                                      //    * Image > fill ì˜µì…˜ ì‚¬ìš©
+    [SerializeField] Text resultText;                 // ë‹¹ì²¨ ì˜ì—­ ë¼ë²¨ í‘œì‹œ
+    [SerializeField] Text informationText;            // ë©”ì„¸ì§€ ì˜ì—­ ë¼ë²¨ í‘œì‹œ
 
     [SerializeField] Button pushStart_Btn;
     [SerializeField] Button showJson_Btn;
@@ -40,47 +37,41 @@ public class GameManager : MonoBehaviour
     int curRound = 0;
 
     [Header("Direction")]
-    [SerializeField] float spinTime = 1f;             // ÇÑ ¹ÙÄû¸¦ µµ´Â µ¥ °É¸®´Â È¸Àü ½Ã°£
-    bool isSpinning = false;                // È¸Àü Áß ÀÎÁö Ã¼Å© > »óÅÂ ¸Ó½Å ¿ªÇÒ ÇÃ·¡±×
-    int minSpinCount = 5;                   // ¿¬Ãâ ½Ã ·ê·¿À» È¸Àü ½ÃÅ³ ÃÖÀú È½¼ö
-    int maxSpinCount = 10;                  // ¿¬Ãâ ½Ã ·ê·¿À» È¸Àü ½ÃÅ³ ÃÖ´ë È½¼ö
-    // ·ê·¿ÀÇ ´Ù¾çÇÑ È¸Àü ¿¬Ãâ (Dotween ¶óÀÌºê·¯¸® È°¿ë)
+    [SerializeField] float spinTime = 1f;             // í•œ ë°”í€´ë¥¼ ë„ëŠ” ë° ê±¸ë¦¬ëŠ” íšŒì „ ì‹œê°„
+    public bool isSpinning = false;                // íšŒì „ ì¤‘ ì¸ì§€ ì²´í¬ > ìƒíƒœ ë¨¸ì‹  ì—­í•  í”Œë˜ê·¸
+    int minSpinCount = 5;                   // ì—°ì¶œ ì‹œ ë£°ë ›ì„ íšŒì „ ì‹œí‚¬ ìµœì € íšŸìˆ˜
+    int maxSpinCount = 10;                  // ì—°ì¶œ ì‹œ ë£°ë ›ì„ íšŒì „ ì‹œí‚¬ ìµœëŒ€ íšŸìˆ˜
+    // ë£°ë ›ì˜ ë‹¤ì–‘í•œ íšŒì „ ì—°ì¶œ (Dotween ë¼ì´ë¸ŒëŸ¬ë¦¬ í™œìš©)
     enum SpinPattern
     {
         //Smooth, Back, Elastic, Bounce,
         Pass, NotPass, Smooth,
         Count
     }
-    float vAngle;       // ·ê·¿ÀÇ ÇÑ ¿µ¿ªÀÌ Â÷ÁöÇÏ´Â °¢µµ
+    float vAngle;       // ë£°ë ›ì˜ í•œ ì˜ì—­ì´ ì°¨ì§€í•˜ëŠ” ê°ë„
+    float lastZ;        // ë£°ë › ê°ë„ ì €ì¥
 
     [Header("Pin Settings")]
-    [SerializeField] GameObject pinPrefab;      // ÇÉÀ» ·ê·¿ÀÇ ½ÃÀÛ ÁöÁ¡À» ÂüÁ¶ÇÏ¿© »ı¼º
-    [SerializeField] float pinOffset = 100f;           // ÇÉÀÌ ·ê·¿ Áß½ÉÀ¸·ÎºÎÅÍ »ı¼ºµÉ °Å¸® °è»ê
+    [SerializeField] GameObject pinPrefab;      // í•€ì„ ë£°ë ›ì˜ ì‹œì‘ ì§€ì ì„ ì°¸ì¡°í•˜ì—¬ ìƒì„±
+    [SerializeField] float pinOffset = 100f;           // í•€ì´ ë£°ë › ì¤‘ì‹¬ìœ¼ë¡œë¶€í„° ìƒì„±ë  ê±°ë¦¬ ê³„ì‚°
+    float pinRadius = 5f;   // í•€ í¬ê¸° ì •ë³´ë¥¼ ë‹´ê¸° ìœ„í•œ ë³€ìˆ˜
+    List<RectTransform> pins = new List<RectTransform>();
 
-    float pinRadius = 5f;   // ÇÉ Å©±â Á¤º¸¸¦ ´ã±â À§ÇÑ º¯¼ö
+    float direction = -1;       // -1 = ì‹œê³„ ë°©í–¥
+    // ê°ì† êµ¬ê°„ íŒì •
+    [SerializeField] float slowThreshold = 30f;
+    float smoothVel;
 
-    // ÇÉÀÇ Á¤º¸¸¦ ´ã´Â ±¸Á¶Ã¼
-    struct PinInfo
-    {
-        public RectTransform rt;
-        public float radius;
-    }
+    // í”„ë¡œí¼í‹°
+    public List<RectTransform> Pins => pins;
+    public float PinRadius => pinRadius;
+    public float CurZ { get; private set; }     // ë£°ë ›ì˜ í˜„ì¬ ê°ë„
+    public float DeltaZ { get; private set; }   // ê°ë„ ë³€í™”ëŸ‰
+    public bool IsSlowing { get; private set; } // ê°ì† êµ¬ê°„ ì²´í¬
+    public float VAngle => vAngle;
+    public float Direction => direction;
+    public float SmoothVel => smoothVel;
 
-    List<PinInfo> pins = new List<PinInfo>();
-
-    [Header("Pointer Settings")]
-    [SerializeField] RectTransform pointer; // ¹Ù´Ã
-    float pointerAngle = 0f;                // ¹Ù´ÃÀÇ ÇöÀç °¢µµ
-    float pointerVel = 0f;                  // ¹Ù´ÃÀÇ ¼Óµµ
-    Vector2 pointerO;                       // ¹Ù´ÃÀÇ ¿øÁ¡(È¸Àü Ãà)
-    float pointerLength;                    // ¹Ù´Ã ±æÀÌ
-
-    [SerializeField] float springConst = 120f;
-    [SerializeField] float damp = 10f;
-    [SerializeField] float maxPointAngle = 45f;
-
-
-    float direction = -1;       // -1 = ½Ã°è ¹æÇâ
     private void Awake()
     {
         if (inst == null)
@@ -93,28 +84,32 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        // ¹öÆ° ¸®½º³Ê ¿¬°á
+        // ë²„íŠ¼ ë¦¬ìŠ¤ë„ˆ ì—°ê²°
         if (pushStart_Btn != null)
             pushStart_Btn.onClick.AddListener(ClickStartButton);
         if (showJson_Btn != null)
             showJson_Btn.onClick.AddListener(ShowJson);
 
-        // UI ÃÊ±âÈ­
+        // UI ì´ˆê¸°í™”
         curRoundText.text = "0";
         curLabelText.text = "0";
         curValueText.text = "0";
         curRateText.text = "0";
-        float z = roulletteParent.localRotation.eulerAngles.z;
-        UpdatePointer(z);
-
-        // ¹Ù´Ã Á¤º¸ ÃÊ±âÈ­
-        CacheInfo();
     }
 
-    void CacheInfo()
+    void LateUpdate()
     {
-        pointerO = pointer.position;
-        pointerLength = pointer.rect.height;
+        float z = roulletteParent.eulerAngles.z;
+
+        DeltaZ = Mathf.DeltaAngle(lastZ, z);
+        CurZ = z;
+
+        float rawVel = Mathf.Abs(CurZ) / Mathf.Max(Time.deltaTime, 0.0001f);
+        smoothVel = Mathf.Lerp(smoothVel, rawVel, Time.deltaTime * 6f);
+
+        IsSlowing = smoothVel < slowThreshold;
+
+        lastZ = z;
     }
 
     void LoadData()
@@ -123,85 +118,87 @@ public class GameManager : MonoBehaviour
 
         if (File.Exists(filePath))
         {
-            // ÆÄÀÏ ºÒ·¯¿À±â
+            // íŒŒì¼ ë¶ˆëŸ¬ì˜¤ê¸°
             string jsonString = File.ReadAllText(filePath);
 
-            // ÆÄ½Ì ¿ëÀ¸·Î ¹®ÀÚ¿­ ¼öÁ¤
-            // ¹è¿­À» { "items": [ ] } ÇüÅÂ·Î ¼öÁ¤ 
+            // íŒŒì‹± ìš©ìœ¼ë¡œ ë¬¸ìì—´ ìˆ˜ì •
+            // ë°°ì—´ì„ { "items": [ ] } í˜•íƒœë¡œ ìˆ˜ì • 
             string jsonToParse = "{\"items\":" +jsonString + "}";
 
             ItemWrapper wrapper = JsonUtility.FromJson<ItemWrapper>(jsonToParse);
             itemDatas = wrapper.items;
 
-            Debug.Log($"·ê·¿ Ç×¸ñ ·Îµå ¿Ï·á / Ç×¸ñ : {itemDatas.Length} ");
+            Debug.Log($"ë£°ë › í•­ëª© ë¡œë“œ ì™„ë£Œ / í•­ëª© : {itemDatas.Length} ");
 
-            // ·ê·¿ Á¤º¸ ÃÊ±âÈ­ ¹× »ı¼º
+            // ë£°ë › ì •ë³´ ì´ˆê¸°í™” ë° ìƒì„±
             CreateRoullette();
         }
         else
         {
-            Debug.Log($"json ÆÄÀÏ ·Îµå ½ÇÆĞ : {filePath} ");
+            Debug.Log($"json íŒŒì¼ ë¡œë“œ ì‹¤íŒ¨ : {filePath} ");
         }
     }
 
     void CreateRoullette()
     {
+        // ë°ì´í„° ì´ˆê¸°í™”
         rateSum = 0;
-
-        //roulletteParent.position = roulletteCenter.position;
 
         foreach (var item in itemDatas)
             rateSum += item.rate;
 
-        int itemCount = itemDatas.Length;           // µ¿ÀûÀ¸·Î »ı¼ºÇÒ ·ê·¿ Ç×¸ñÀÇ ¼ö
-        vAngle = 360f / itemCount;       // ÇÑ Ä­ÀÌ Â÷ÁöÇÏ´Â °ø°£ÀÇ °¢µµ °è»ê
+        int itemCount = itemDatas.Length;           // ë™ì ìœ¼ë¡œ ìƒì„±í•  ë£°ë › í•­ëª©ì˜ ìˆ˜
+        vAngle = 360f / itemCount;       // í•œ ì¹¸ì´ ì°¨ì§€í•˜ëŠ” ê³µê°„ì˜ ê°ë„ ê³„ì‚°
         float imgFill = 1f / itemCount;
 
+
+        // ë£°ë › ìƒì„±
         for(int i = 0; i < itemCount; i++)
         {
-            // ½ÇÁ¦ ´çÃ· È®·ü °è»ê
+            // ì‹¤ì œ ë‹¹ì²¨ í™•ë¥  ê³„ì‚°
             itemDatas[i].probability = (float)itemDatas[i].rate / rateSum;
 
-            // °¢µµ °ª ÀúÀå
+            // ê°ë„ ê°’ ì €ì¥
             itemDatas[i].startAngle = vAngle * i;
             itemDatas[i].endAngle = vAngle * (i + 1);
 
-            // ·ê·¿ Á¶°¢ »ı¼º
+            // ë£°ë › ì¡°ê° ìƒì„±
             GameObject part = Instantiate(partPrefab, roulletteParent);
 
             Image img = part.GetComponent<Image>();
             if (img != null)
             {
                 img.fillAmount = imgFill;
-                // ±¸ºĞÀ» À§ÇØ »ö»ó º¯°æ
+                // êµ¬ë¶„ì„ ìœ„í•´ ìƒ‰ìƒ ë³€ê²½
                 img.color = (i % 2 == 0) ? Color.white : new Color(0.9f, 0.9f,0.9f);
             }
 
-            // È¸Àü
+            // íšŒì „
             part.transform.localRotation = Quaternion.Euler(0, 0, -vAngle * i);
 
-            // ÅØ½ºÆ® ¼³Á¤
+            // í…ìŠ¤íŠ¸ ì„¤ì •
             Text partLabel = part.GetComponentInChildren<Text>();
             if(partLabel != null)
             {
-                // ÅØ½ºÆ® ¼öÁ¤ ¹× ºÎÃ¤²Ã Áß¾ÓÀ¸·Î À§Ä¡ÇÏµµ·Ï È¸Àü
-                partLabel.text = itemDatas[i].label + "\n\n\n\n\n\n\n";     // ÀÓ½Ã 
+                // í…ìŠ¤íŠ¸ ìˆ˜ì • ë° ë¶€ì±„ê¼´ ì¤‘ì•™ìœ¼ë¡œ ìœ„ì¹˜í•˜ë„ë¡ íšŒì „
+                partLabel.text = itemDatas[i].label + "\n\n\n\n\n\n\n";     // ì„ì‹œ 
                 partLabel.transform.localRotation = Quaternion.Euler(0,0, -vAngle / 2f);
             }
         }
 
+        // í•€ ìƒì„±
         pins.Clear();
-        for (int i = 0; i < itemCount; i++)     // »ı¼º ¼ø¼­¸¦ ÈÄ¼øÀ§·Î ¹Ì·ç±â À§ÇØ º°µµÀÇ for¹® »ç¿ë
+        for (int i = 0; i < itemCount; i++)
         {
             if (pinPrefab != null)
             {
                 GameObject pin = Instantiate(pinPrefab, roulletteParent);
 
-                // ÇÉÀÇ °¢µµ °áÁ¤ -> ·ê·¿ÀÇ °æ°è¸é¿¡ À§Ä¡ÇÏµµ·Ï Item.startAngle ÂüÁ¶
+                // í•€ì˜ ê°ë„ ê²°ì • -> ë£°ë ›ì˜ ê²½ê³„ë©´ì— ìœ„ì¹˜í•˜ë„ë¡ Item.startAngle ì°¸ì¡°
                 float angle = -vAngle * i;
                 float rad = angle * Mathf.Deg2Rad;
 
-                // ÁÂÇ¥ °è»ê
+                // ì¢Œí‘œ ê³„ì‚°
                 float x = Mathf.Sin(rad) * pinOffset;
                 float y = Mathf.Cos(rad) * pinOffset;
 
@@ -209,15 +206,11 @@ public class GameManager : MonoBehaviour
                 rt.localPosition = new Vector3(x, y, 0);
                 rt.localRotation = Quaternion.Euler(0, 0, angle);
 
-                pins.Add(new PinInfo
-                {
-                    rt = rt,
-                    radius = pinRadius
-                });
+                pins.Add(rt);
             }
         }
 
-        // ÃÊ±â »ı¼º ½Ã ÇÉÀÇ À§Ä¡¿Í ¹Ù´ÃÀÌ °ãÄ¡´Â °æ¿ì ·ê·¿À» »ìÂ¦ È¸Àü½ÃÄÑ ¾î»öÇÑ ¿¬Ãâ È¸ÇÇ
+        // ì´ˆê¸° ìƒì„± ì‹œ í•€ì˜ ìœ„ì¹˜ì™€ ë°”ëŠ˜ì´ ê²¹ì¹˜ëŠ” ê²½ìš° ë£°ë ›ì„ ì‚´ì§ íšŒì „ì‹œì¼œ ì–´ìƒ‰í•œ ì—°ì¶œ íšŒí”¼
         roulletteParent.localRotation = Quaternion.Euler(0, 0, vAngle / 2);
 
     }
@@ -226,7 +219,7 @@ public class GameManager : MonoBehaviour
     {
         if (isSpinning) return;
 
-        roulletteParent.DOKill();       // Dotween Áßº¹ È£Ãâ ¹æÁö
+        roulletteParent.DOKill();       // Dotween ì¤‘ë³µ í˜¸ì¶œ ë°©ì§€
         StartCoroutine(StartSpin());
     }
 
@@ -236,79 +229,31 @@ public class GameManager : MonoBehaviour
         isSpinning = true;
         informationText.text = "Waiting...";
 
-        // °á°ú »ı¼º
+        // ê²°ê³¼ ìƒì„±
         Item resultItem = GetResult();
-        // È¸Àü ¿¬Ãâ ÆĞÅÏ ·£´ı ¼³Á¤
+        // íšŒì „ ì—°ì¶œ íŒ¨í„´ ëœë¤ ì„¤ì •
         SpinPattern pattern = SpinPattern.Pass; //(SpinPattern)Random.Range(0, (int)SpinPattern.Count);
-        // ·ê·¿ÀÇ È¸Àü ¼ö ¼³Á¤
+        // ë£°ë ›ì˜ íšŒì „ ìˆ˜ ì„¤ì •
         int ranSpinCount = Random.Range(minSpinCount, maxSpinCount + 1);
 
         // baseZ
-        float baseZ = resultItem.startAngle + 180f  // ¸ñÇ¥ À§Ä¡ + ¹Ù´Ã ¹æÇâ º¸Á¤ = Àı´ë°ª
-            + (360 * ranSpinCount) * direction;     // Ãß°¡ È¸Àü ¼ö * ¹æÇâ
+        float baseZ = resultItem.startAngle + 180f  // ëª©í‘œ ìœ„ì¹˜ + ë°”ëŠ˜ ë°©í–¥ ë³´ì • = ì ˆëŒ€ê°’
+            + (360 * ranSpinCount) * direction;     // ì¶”ê°€ íšŒì „ ìˆ˜ * ë°©í–¥
        
-        Debug.Log(resultItem.startAngle);
-        Debug.Log(baseZ);
-        // ¿¬Ãâ Àü±îÁö È¸Àü ½Ã°£ °è»ê
+        // ì—°ì¶œ ì „ê¹Œì§€ íšŒì „ ì‹œê°„ ê³„ì‚°
         float directTime = spinTime * ranSpinCount;
 
         Sequence seq = DOTween.Sequence();
-        float addTime = Random.Range(1f, 3f);     // Ãß°¡ ¹Ù´Ã ¿¬Ãâ ½Ã°£
-        // ½ÃÄö½º 2 - Á¤Áö ¿¬Ãâ
-        Debug.Log(pattern);
+        float addTime = Random.Range(1f, 3f);     // ì¶”ê°€ ë°”ëŠ˜ ì—°ì¶œ ì‹œê°„
+        // ì‹œí€€ìŠ¤ 2 - ì •ì§€ ì—°ì¶œ
+        //Debug.Log(pattern);
         switch (pattern)
         {
-            #region ¼öÁ¤ Àü »çÇ×
-            //// Á¤Á÷ÇÏ°Ô °¨¼Ó
-            //case SpinPattern.Smooth:
-            //    seq.Append (roulletteParent
-            //        .DORotate(new Vector3(0, 0, targetZ),
-            //        1.2f, RotateMode.Fast)      // 0.6f : ¿¬Ãâ ½Ã°£
-            //                                    // Fast : -180~180 ¹üÀ§ ³»ÀÇ °¡±î¿î ¹æÇâÀ¸·Î È¸Àü
-            //        .SetEase(Ease.OutCubic)     // OutCubic : ¹İµ¿ ¾øÀÌ ÀÏÁ¤ÇÏ°Ô °¨¼Ó
-            //        );
-            //    break;
-            //
-            //// ¸ñÇ¥ ÁöÁ¡À» Á¶±İ ÃÊ°úÇÑ µÚ µ¹¾Æ¿À´Â ¿¬Ãâ
-            //case SpinPattern.Back:
-            //    float backOffset = vAngle * Random.Range(0.7f, 1.1f);
-            //
-            //    seq.Append(roulletteParent
-            //        .DORotate(new Vector3(0, 0, targetZ + backOffset),
-            //        0.4f, RotateMode.Fast)     // 0.25f : ¿¬Ãâ ½Ã°£
-            //        .SetEase(Ease.OutQuad)      // OutQuad : ¸ñÇ¥ ¼Óµµ¿¡ ºü¸£°Ô µµ´Ş ÈÄ °¨¼Ó
-            //        );
-            //
-            //    seq.Append(roulletteParent
-            //        .DORotate(new Vector3(0, 0, targetZ),
-            //        0.5f, RotateMode.Fast)     // 0.25f : ¿¬Ãâ ½Ã°£
-            //        .SetEase(Ease.InOutCubic)    // InOutQuad : ½ÃÀÛ/Á¾·á ½Ã InOutCubicº¸´Ù ¿Ï¸¸ÇÏ°Ô °¡/°¨¼Ó
-            //        );
-            //
-            //    break;
-            //
-            //case SpinPattern.Elastic:
-            //    // Æ¨±â´Â µíÇÑ ¿¬Ãâ
-            //    seq.Append(roulletteParent
-            //        .DORotate(new Vector3(0, 0, targetZ),
-            //        1.4f, RotateMode.Fast)       //  0.6f : ¿¬Ãâ ½Ã°£       
-            //        .SetEase(Ease.OutElastic, 0.6f, 0.3f)  // OutElastic : 0.6fÀÇ ÁøÆøÀ» 0.3f °£°İÀ¸·Î Áøµ¿ È¿°ú ¹ß»ı
-            //        );
-            //    break;
-            //
-            //case SpinPattern.Bounce:
-            //    seq.Append(roulletteParent
-            //         .DORotate(new Vector3(0, 0, targetZ),
-            //         0.8f, RotateMode.Fast)     // 0.5f : ¿¬Ãâ ½Ã°£
-            //         .SetEase(Ease.OutBounce)   // OutBounce : ÅëÅë Æ¨±â´Â °¨¼Ó ¹İµ¿ ¹ß»ı
-            //         );
-            //    break;
-            #endregion
-            // ³Ñ±æµí ¸»µí ³Ñ¾î°¡´Â ¿¬Ãâ
+            // ë„˜ê¸¸ë“¯ ë§ë“¯ ë„˜ì–´ê°€ëŠ” ì—°ì¶œ
             case SpinPattern.Pass:
                 {
-                    float targetZ = baseZ + vAngle/2 - pinRadius;     // ÃÖÁ¾ ÁöÁ¡
-                    float midZ = baseZ + vAngle/2 + pinRadius;     // °É·Á¼­ ¸ØÃß´Â ÁöÁ¡
+                    float targetZ = baseZ + vAngle/2f - pinRadius;     // ìµœì¢… ì§€ì 
+                    float midZ = baseZ + vAngle/2f + pinRadius;     // ê±¸ë ¤ì„œ ë©ˆì¶”ëŠ” ì§€ì 
 
                     seq.Append(roulletteParent
                         .DORotate(new Vector3(0, 0, midZ),
@@ -321,11 +266,11 @@ public class GameManager : MonoBehaviour
                     
                 break;
 
-            // ³Ñ±æµí ¸»µí ¾È ³Ñ¾î°¡´Â ¿¬Ãâ
+            // ë„˜ê¸¸ë“¯ ë§ë“¯ ì•ˆ ë„˜ì–´ê°€ëŠ” ì—°ì¶œ
             case SpinPattern.NotPass:
                 {
-                    float midZ = baseZ - pinRadius*0.2f;  // °É·Á¼­ ¸ØÃß´Â ÁöÁ¡
-                    float targetZ = baseZ + pinRadius; // ÃÖÁ¾ ÁöÁ¡
+                    float midZ = baseZ - pinRadius*0.2f;  // ê±¸ë ¤ì„œ ë©ˆì¶”ëŠ” ì§€ì 
+                    float targetZ = baseZ + pinRadius; // ìµœì¢… ì§€ì 
            
                     seq.Append(roulletteParent
                         .DORotate(new Vector3(0, 0, midZ)
@@ -337,7 +282,7 @@ public class GameManager : MonoBehaviour
                 }
                 break;
 
-            // Èû¾øÀÌ È®Á¤ > º°µµÀÇ ¿¬Ãâ ¾øÀ½
+            // í˜ì—†ì´ í™•ì • > ë³„ë„ì˜ ì—°ì¶œ ì—†ìŒ
             case SpinPattern.Smooth:
                 {
                     float offSet = Random.Range(pinRadius, vAngle/2);
@@ -351,22 +296,22 @@ public class GameManager : MonoBehaviour
 
         }
 
-        // È¸Àü Áß ÅØ½ºÆ® ½Ç½Ã°£ º¯°æ
+        // íšŒì „ ì¤‘ í…ìŠ¤íŠ¸ ì‹¤ì‹œê°„ ë³€ê²½
         seq.OnUpdate(() =>
             {
                 float z = roulletteParent.localRotation.eulerAngles.z;
                 UpdatePointer(z);
             });
 
-        // ¿¬Ãâ ³¡³¯ ¶§±îÁö ´ë±â
+        // ì—°ì¶œ ëë‚  ë•Œê¹Œì§€ ëŒ€ê¸°
         yield return seq.WaitForCompletion();
 
-        // ÆĞÅÏÀÌ ¿Ï·áµÇ¸é »óÅÂ ÇÃ·¡±×¿Í °á°ú Ã³¸®
+        // íŒ¨í„´ì´ ì™„ë£Œë˜ë©´ ìƒíƒœ í”Œë˜ê·¸ì™€ ê²°ê³¼ ì²˜ë¦¬
         isSpinning = false;
         ShowResult(resultItem);
     }
 
-    // Dotween ¿¬Ãâ ½Ã ¸Å ÇÁ·¹ÀÓ ¾÷µ¥ÀÌÆ® + ´ë±â ½Ã°£ Ã³¸®
+    // Dotween ì—°ì¶œ ì‹œ ë§¤ í”„ë ˆì„ ì—…ë°ì´íŠ¸ + ëŒ€ê¸° ì‹œê°„ ì²˜ë¦¬
     //IEnumerator PlayTween(Tween t, float spinZ)
     //{
     //    yield return t
@@ -374,28 +319,20 @@ public class GameManager : MonoBehaviour
     //        .WaitForCompletion();
     //}
 
-    float CalcDistance(Vector2 p, Vector2 a, Vector2 b)
-    {
-        // ¹Ù´Ã°ú ·ê·¿ÀÇ °¢ ÆÄÆ®ÀÇ °Å¸®¸¦ °è»êÇØ ¹İÈ¯
-        Vector2 ab = b - a;
-        float t = Vector2.Dot(p - a, ab) / ab.sqrMagnitude;
-        Vector2 proj = a + t * ab;
-        return Vector2.Distance(p, proj);
-    }
     void UpdatePointer(float spinZ)
     {
-        
-
-        // °á°ú ÅØ½ºÆ® Ãâ·Â
-        float result = Mathf.Repeat(normalizedAngle + 180f, 360f);
+        // ê²°ê³¼ í…ìŠ¤íŠ¸
+        float result = Mathf.Repeat(spinZ + 180f, 360f);
         int itemIdx = Mathf.FloorToInt(result / vAngle);
+        itemIdx = Mathf.Clamp(itemIdx, 0, itemDatas.Length - 1);
         resultText.text = itemDatas[itemIdx].label;
     }
 
+
     public Item GetResult()
     {
-        float ranValue = Random.Range(0f, 1f);  // ·£´ı ¹ß»ı
-        float cumulative = 0f;                  // ´©Àû È®·ü °ª
+        float ranValue = Random.Range(0f, 1f);  // ëœë¤ ë°œìƒ
+        float cumulative = 0f;                  // ëˆ„ì  í™•ë¥  ê°’
 
         foreach (var item in itemDatas)
         {
@@ -412,7 +349,7 @@ public class GameManager : MonoBehaviour
         curRoundText.text = curRound.ToString();
         curLabelText.text = targetItem.label;
         curValueText.text = targetItem.value.ToString("N0");        
-        curRateText.text = targetItem.probability.ToString("F3");   // ÀúÀåÇØµĞ ½ÇÁ¦ °ª Ç¥½Ã
+        curRateText.text = targetItem.probability.ToString("F3");   // ì €ì¥í•´ë‘” ì‹¤ì œ ê°’ í‘œì‹œ
 
         informationText.text = $"{targetItem.label}";
     }
@@ -421,10 +358,10 @@ public class GameManager : MonoBehaviour
     {
         string filePath = Path.Combine(Application.dataPath, "Table", "rate.json");
         
-        // ÆÄÀÏÀÌ Á¸ÀçÇÏ´Â Áö °Ë»ç ÈÄ ½ÇÇà
+        // íŒŒì¼ì´ ì¡´ì¬í•˜ëŠ” ì§€ ê²€ì‚¬ í›„ ì‹¤í–‰
         if (File.Exists(filePath))
             System.Diagnostics.Process.Start("notePad.exe", filePath);
         else
-            Debug.Log($"ÆÄÀÏÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù. : {filePath}");
+            Debug.Log($"íŒŒì¼ì„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤. : {filePath}");
     }
 }

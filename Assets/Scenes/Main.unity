@@ -1123,9 +1123,10 @@ MonoBehaviour:
   curValueText: {fileID: 1108138100}
   curRateText: {fileID: 1555620850}
   spinTime: 1
+  isSpinning: 0
   pinPrefab: {fileID: 7446914405731403124, guid: 45bd2eb871dce674da4ff7344e19d1b1, type: 3}
   pinOffset: 330
-  pointer: {fileID: 1506875928}
+  slowThreshold: 30
 --- !u!4 &894919457
 Transform:
   m_ObjectHideFlags: 0
@@ -2052,6 +2053,7 @@ GameObject:
   - component: {fileID: 1506875928}
   - component: {fileID: 1506875930}
   - component: {fileID: 1506875929}
+  - component: {fileID: 1506875931}
   m_Layer: 5
   m_Name: Arrow
   m_TagString: Untagged
@@ -2075,8 +2077,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -374}
-  m_SizeDelta: {x: 30, y: 100}
+  m_AnchoredPosition: {x: 0, y: -380.3}
+  m_SizeDelta: {x: 30, y: 80}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &1506875929
 MonoBehaviour:
@@ -2116,6 +2118,23 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1506875927}
   m_CullTransparentMesh: 1
+--- !u!114 &1506875931
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1506875927}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4958fd13999183e4d957dd548e310131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  springStrength: 60
+  damping: 12
+  maxDeflectionAngle: 55
+  impulseStrength: 300
+  triggerAngleThreshold: 8
 --- !u!1 &1555561999
 GameObject:
   m_ObjectHideFlags: 0
