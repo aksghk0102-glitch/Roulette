@@ -38,7 +38,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Direction")]
     [SerializeField] float spinTime = 1f;             // 한 바퀴를 도는 데 걸리는 회전 시간
-    public bool isSpinning = false;                // 회전 중 인지 체크 > 상태 머신 역할 플래그
+    bool isSpinning = false;                // 회전 중 인지 체크 > 상태 머신 역할 플래그
     int minSpinCount = 5;                   // 연출 시 룰렛을 회전 시킬 최저 횟수
     int maxSpinCount = 10;                  // 연출 시 룰렛을 회전 시킬 최대 횟수
     // 룰렛의 다양한 회전 연출 (Dotween 라이브러리 활용)
@@ -63,7 +63,9 @@ public class GameManager : MonoBehaviour
     float smoothVel;
 
     [Header("Pointer")]
+    [SerializeField] PointerCtrl pointer;
     [SerializeField] float pointerLength = 120f; // 바늘의 길이 (L)
+
 
     // 프로퍼티
     public List<RectTransform> Pins => pins;
@@ -237,7 +239,8 @@ public class GameManager : MonoBehaviour
         // 결과 생성
         Item resultItem = GetResult();
         // 회전 연출 패턴 랜덤 설정
-        SpinPattern pattern = SpinPattern.Pass; //(SpinPattern)Random.Range(0, (int)SpinPattern.Count);
+        SpinPattern pattern = SpinPattern.Pass;// (SpinPattern)Random.Range(0, (int)SpinPattern.Count);
+        Debug.Log(pattern);
         // 룰렛의 회전 수 설정
         int ranSpinCount = Random.Range(minSpinCount, maxSpinCount + 1);
 
@@ -251,23 +254,22 @@ public class GameManager : MonoBehaviour
         Sequence seq = DOTween.Sequence();
         float addTime = Random.Range(1f, 3f);     // 추가 바늘 연출 시간
         // 시퀀스 2 - 정지 연출
-        //Debug.Log(pattern);
-        float pushAngle = CalculatePushAngle();
+        float pushAngle = CalculatePushAngle();     // 바늘이 한 칸을 넘기 위한 각도 계산
         switch (pattern)
         {
             // 넘길듯 말듯 넘어가는 연출
             case SpinPattern.Pass:
                 {
-                    float midZ = baseZ + vAngle + pushAngle;     // 걸려서 멈추는 지점
-                    float targetZ = baseZ + vAngle - pinRadius;     // 최종 지점
+                    float midZ = baseZ + vAngle - pushAngle*0.8f;     // 걸려서 멈추는 지점
+                    float targetZ = baseZ + vAngle - pushAngle - Random.Range(1f, 5f);     // 최종 지점
 
                     seq.Append(roulletteParent
                         .DORotate(new Vector3(0, 0, midZ),
                         directTime, RotateMode.FastBeyond360)
-                        .SetEase(Ease.OutQuad));
+                        .SetEase(Ease.OutSine));
                     seq.Append(roulletteParent
                         .DORotate(new Vector3(0, 0, targetZ), addTime)
-                        .SetEase(Ease.InOutBack));
+                        .SetEase(Ease.InBack));
                 }
                     
                 break;
@@ -276,7 +278,7 @@ public class GameManager : MonoBehaviour
             case SpinPattern.NotPass:
                 {
                     float midZ = baseZ - pushAngle*(Random.Range(0.2f, 0.5f));  // 걸려서 멈추는 지점
-                    float targetZ = baseZ + pinRadius; // 최종 지점
+                    float targetZ = baseZ + Random.Range(2f, pinRadius); // 최종 지점
            
                     seq.Append(roulletteParent
                         .DORotate(new Vector3(0, 0, midZ)
@@ -288,10 +290,10 @@ public class GameManager : MonoBehaviour
                 }
                 break;
 
-            // 힘없이 확정 > 별도의 연출 없음
+            // 힘없이 확정
             case SpinPattern.Smooth:
                 {
-                    float offSet = Random.Range(pinRadius, vAngle - pinRadius);
+                    float offSet = Random.Range(pinRadius, vAngle - pushAngle - pinRadius);
                     float targetZ = baseZ + offSet;
                     seq.Append(roulletteParent
                         .DORotate(new Vector3(0, 0, targetZ),
@@ -307,7 +309,9 @@ public class GameManager : MonoBehaviour
         seq.OnUpdate(() =>
             {
                 float z = roulletteParent.localRotation.eulerAngles.z;
+
                 UpdatePointer(z);
+                UpdateText(z);
             });
 
         // 연출 끝날 때까지 대기
@@ -322,8 +326,6 @@ public class GameManager : MonoBehaviour
         // Atan2(대변, 인접변)를 사용하여 바늘의 기울기 각도를 정확히 계산
         // L=100, D=330 일 때 약 16.8도가 나옵니다.
         float angle = Mathf.Atan2(pointerLength, pinOffset) * Mathf.Rad2Deg;
-
-        Debug.Log($"[Physics] Calculated pushAngle: {angle}");
         return angle;
     }
 
@@ -337,13 +339,48 @@ public class GameManager : MonoBehaviour
 
     void UpdatePointer(float spinZ)
     {
+        if (pointer == null) return;
+
+        float pushThreshold = CalculatePushAngle(); // 16.8도
+
+        // [중요] 루프 시작 전 반드시 0으로 초기화 (핀이 없으면 무조건 0 전달)
+        float activeRatio = 0f;
+
+        float normalizedZ = Mathf.Repeat(spinZ + 180f, 360f);
+        float pinRadiusAngle = (pinRadius / pinOffset) * Mathf.Rad2Deg;
+
+        for (int i = 0; i < pins.Count; i++)
+        {
+            float pinAngle = i * vAngle;
+            float diff = Mathf.DeltaAngle(normalizedZ, pinAngle);
+
+            // 핀의 반지름을 고려한 충돌 판정 범위
+            if (diff > -pinRadiusAngle && diff < pushThreshold)
+            {
+                float adjustedDiff = diff + pinRadiusAngle;
+                float totalRange = pushThreshold + pinRadiusAngle;
+
+                // 0~1 사이로 확실히 제한
+                activeRatio = Mathf.Clamp01(adjustedDiff / totalRange);
+
+                // 유효한 핀을 찾았으므로 더 이상 루프를 돌지 않음
+                break;
+            }
+        }
+
+        // [확인] 루프를 다 돌았는데 조건에 맞는 핀이 하나도 없다면 
+        // 위에서 초기화한 0f가 주입되어 PointerCtrl의 스프링 복원이 작동함
+        pointer.UpdatePointer(activeRatio);
+    }
+
+    void UpdateText(float spinZ)
+    {
         // 결과 텍스트
         float result = Mathf.Repeat(spinZ + 180f, 360f);
         int itemIdx = Mathf.FloorToInt(result / vAngle);
         itemIdx = Mathf.Clamp(itemIdx, 0, itemDatas.Length - 1);
         resultText.text = itemDatas[itemIdx].label;
     }
-
 
     public Item GetResult()
     {

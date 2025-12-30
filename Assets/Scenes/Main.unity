@@ -1123,11 +1123,11 @@ MonoBehaviour:
   curValueText: {fileID: 1108138100}
   curRateText: {fileID: 1555620850}
   spinTime: 1
-  isSpinning: 0
   pinPrefab: {fileID: 7446914405731403124, guid: 45bd2eb871dce674da4ff7344e19d1b1, type: 3}
   pinOffset: 330
   slowThreshold: 30
-  pointerLength: 70
+  pointer: {fileID: 1506875931}
+  pointerLength: 80
 --- !u!4 &894919457
 Transform:
   m_ObjectHideFlags: 0
@@ -2056,7 +2056,7 @@ GameObject:
   - component: {fileID: 1506875929}
   - component: {fileID: 1506875931}
   m_Layer: 5
-  m_Name: Arrow
+  m_Name: Pointer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
