@@ -239,7 +239,7 @@ public class GameManager : MonoBehaviour
         // 결과 생성
         Item resultItem = GetResult();
         // 회전 연출 패턴 랜덤 설정
-        SpinPattern pattern = SpinPattern.Pass;// (SpinPattern)Random.Range(0, (int)SpinPattern.Count);
+        SpinPattern pattern = (SpinPattern)Random.Range(0, (int)SpinPattern.Count);
         Debug.Log(pattern);
         // 룰렛의 회전 수 설정
         int ranSpinCount = Random.Range(minSpinCount, maxSpinCount + 1);
