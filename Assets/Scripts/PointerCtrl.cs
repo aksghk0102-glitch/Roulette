@@ -19,7 +19,7 @@ public class PointerCtrl : MonoBehaviour
     private float currentAngle;
     private float angularVelocity;
 
-    private bool isColliding; // 핀에 밀리고 있는 중인지
+    private bool isColliding = false; // 핀에 밀리고 있는 중인지
 
     private void Awake()
     {
