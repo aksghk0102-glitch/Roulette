@@ -1,71 +1,89 @@
 using UnityEngine;
 
-// 바늘에 붙이는 컴포넌트
+// UI 바늘 컨트롤러
+// 1) 룰렛에 설치된 핀과 충돌 시 물리적으로 튕김
+// 2) 충돌이 끝나면 스프링으로 원위치 복귀
+// 3) 룰렛 결과 계산에는 관여하지 않음
 
+[RequireComponent(typeof(Rigidbody2D))]
 public class PointerCtrl : MonoBehaviour
 {
-    [Header("Spring Physics")]
-    [SerializeField] private float springStrength = 150f; // 복원력 강화
-    [SerializeField] private float damping = 12f;         // 저항값 최적화
+    [Header("Spring Settings")]
+    [SerializeField] private float springStrength = 150f;   // 복원력
+    [SerializeField] private float damping = 12f;           // 감쇠
+    [SerializeField] private float maxAngle = 60f;          // 최대 회전 각
 
-    private RectTransform pointerRect;
-    private const float MAX_POINTER_ANGLE = 60f;
+    private RectTransform rect;
+    private Rigidbody2D rb;
 
-    private float currentAngle = 0f;
-    private float currentVelocity = 0f;
-    private bool isPushedThisFrame = false;
+    private float currentAngle;
+    private float angularVelocity;
+
+    private bool isColliding; // 핀에 밀리고 있는 중인지
 
     private void Awake()
     {
-        pointerRect = GetComponent<RectTransform>();
+        rect = GetComponent<RectTransform>();
+        rb = GetComponent<Rigidbody2D>();
+
+        // UI용 Rigidbody 세팅
+        rb.gravityScale = 0f;
+        rb.freezeRotation = false;
+        rb.angularDrag = 0f;
     }
 
-    // GameManager에서 호출 (주입 즉시 반영)
-    public void UpdatePointer(float pushRatio)
+    private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (pushRatio > 0.001f)
+        // 핀과 충돌 시
+        if (collision.collider.CompareTag("RoulettePin"))
         {
-            isPushedThisFrame = true;
+            isColliding = true;
 
-            // 비율에 따른 목표 각도 계산
-            float targetAngle = pushRatio * MAX_POINTER_ANGLE;
-
-            // 반응성을 위해 보간 없이 즉시 추종하거나 매우 높은 속도로 따라감
-            currentAngle = targetAngle;
-            currentVelocity = 0f;
-
-            // 주입된 프레임에서 바로 회전 적용
-            ApplyRotation();
-        }
-        else
-        {
-            isPushedThisFrame = false;
+            // 충돌 지점의 상대 속도를 기준으로 회전 토크 부여
+            float impactForce = collision.relativeVelocity.magnitude;
+            rb.AddTorque(-impactForce * 5f, ForceMode2D.Impulse);
         }
     }
 
-    private void LateUpdate() // 룰렛 이동이 끝난 후 최종 연산
+    private void OnCollisionExit2D(Collision2D collision)
     {
-        // 핀의 압박이 없는 상태에서만 탄성 복귀 수행
-        if (!isPushedThisFrame)
+        if (collision.collider.CompareTag("RoulettePin"))
         {
-            ApplySpringForce(0f);
-            ApplyRotation();
+            isColliding = false;
+
+            // 물리 각속도를 스프링 시스템으로 인계
+            angularVelocity = rb.angularVelocity;
         }
     }
 
-    private void ApplySpringForce(float targetAngle)
+    private void LateUpdate()
     {
-        float displacement = currentAngle - targetAngle;
+        // 충돌 중에는 물리 엔진에 전적으로 맡김
+        if (isColliding)
+            return;
+
+        // 현재 회전 각도 추출
+        currentAngle = NormalizeAngle(rect.localEulerAngles.z);
+
+        // 스프링 복원 계산
+        float displacement = currentAngle;
         float springForce = -springStrength * displacement;
-        float dampingForce = -damping * currentVelocity;
+        float dampingForce = -damping * angularVelocity;
 
-        currentVelocity += (springForce + dampingForce) * Time.deltaTime;
-        currentAngle += currentVelocity * Time.deltaTime;
+        angularVelocity += (springForce + dampingForce) * Time.deltaTime;
+        currentAngle += angularVelocity * Time.deltaTime;
+
+        currentAngle = Mathf.Clamp(currentAngle, 0f, maxAngle);
+
+        // 물리 영향 제거 후 직접 회전 적용
+        rb.angularVelocity = 0f;
+        rect.localRotation = Quaternion.Euler(0, 0, currentAngle);
     }
 
-    private void ApplyRotation()
+    private float NormalizeAngle(float angle)
     {
-        float finalAngle = Mathf.Clamp(currentAngle, 0f, MAX_POINTER_ANGLE + 10f);
-        pointerRect.localRotation = Quaternion.Euler(0, 0, finalAngle);
+        if (angle > 180f)
+            angle -= 360f;
+        return angle;
     }
 }

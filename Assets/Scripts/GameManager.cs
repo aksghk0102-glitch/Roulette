@@ -9,6 +9,9 @@ using DG.Tweening;
 // 25.12.23(화) 추가 작업 사항 메모
 // - 룰렛 생성 시 핀이 함께 생성되도록 수정 
 // - 룰렛이 시계 방향으로 회전하도록 수정 (targetZ를 잡는 부분을 음수화)
+//
+// 
+//
 // ================================================================================ 
 
 public class GameManager : MonoBehaviour
@@ -239,7 +242,7 @@ public class GameManager : MonoBehaviour
         // 결과 생성
         Item resultItem = GetResult();
         // 회전 연출 패턴 랜덤 설정
-        SpinPattern pattern = (SpinPattern)Random.Range(0, (int)SpinPattern.Count);
+        SpinPattern pattern = SpinPattern.Smooth; //(SpinPattern)Random.Range(0, (int)SpinPattern.Count);
         Debug.Log(pattern);
         // 룰렛의 회전 수 설정
         int ranSpinCount = Random.Range(minSpinCount, maxSpinCount + 1);
@@ -368,9 +371,9 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // [확인] 루프를 다 돌았는데 조건에 맞는 핀이 하나도 없다면 
-        // 위에서 초기화한 0f가 주입되어 PointerCtrl의 스프링 복원이 작동함
-        pointer.UpdatePointer(activeRatio);
+        //// [확인] 루프를 다 돌았는데 조건에 맞는 핀이 하나도 없다면 
+        //// 위에서 초기화한 0f가 주입되어 PointerCtrl의 스프링 복원이 작동함
+        //pointer.UpdatePointer(activeRatio);
     }
 
     void UpdateText(float spinZ)
